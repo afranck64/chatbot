@@ -1,0 +1,8 @@
+words.txt format:
+word    frequency   (type1,...typen)
+
+
+possible types are:
+pronoun,noun,adverb,adjective,injerjection,verb,conjunction,auxilary verb,preposition,definite article,indefinite article,
+
+link: http://www.talkenglish.com/vocabulary/top-2000-vocabulary.aspx

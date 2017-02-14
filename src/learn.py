@@ -6,6 +6,7 @@ import glob
 import string
 import json
 import cPickle as pickle
+import itertools
 
 from model import WType
 import model
@@ -52,6 +53,12 @@ USE_JSON = False
 HEAD = "head"
 BODY = "body"
 TAIL = "tail"
+TREE_HEAD = "head"
+TREE_BODY = "body"
+TREE_TAIL = "tail"
+TREE_CONFIG = "_config"
+
+MARKOV_MEMORY_SIZE = 4
 
 def _process_multi_types():
     """Assign to each word a part of speach based on the multi db."""
@@ -219,44 +226,34 @@ def _sentence2bases(sentence):
     """convert a sentence in a corresponding list of bases"""
     return tuple(word.get_types() for word in sentence2words(sentence))
 
-def _extend_node(node, bases, index=0):
-    """extends the <Pnode> node with <Wtype> groups in bases."""
-    if MAX_DEPTH > 0 and index > MAX_DEPTH:
-        return
-    if len(bases) > index:
-        base = bases[index]
-        for wtype in base:
-            found = False
-            for _node in node.nodes:
-                if _node.type == wtype:
-                    _node.score += 1
-                    found = True
-                    break
-            if not found:
-                node.nodes.append(model.PNode(wtype, 1))
-    else:
-        node.is_leaf = True
-    for _node in node.get_nodes():
-        _extend_node(_node, bases, index+1)
+def _bases2nodes(bases, root):
+    for index in xrange(len(bases)):
+        params = ()
+        id_min = max(index-MARKOV_MEMORY_SIZE, 0)
+        id_max = min(index+1, len(bases))
+        params = itertools.product(*bases[id_min:id_max])
+        for key in params:
+            if key:
+                if index <= MARKOV_MEMORY_SIZE:
+                    root[TREE_HEAD][key] = root[TREE_HEAD].get(key, 0) + 1
+                elif index < len(bases)-MARKOV_MEMORY_SIZE:
+                    root[TREE_BODY][key] = root[TREE_BODY].get(key, 0) + 1
+                else:
+                    root[TREE_TAIL][key] = root[TREE_TAIL].get(key, 0) + 1
 
-def _bases2nodes(bases, root, index=0, last=None, last2=None):
-    params = []
-    while len(bases) > index:
-        base = bases[index]
-        params = []
-        for wtype in base:
-            if last2 and last:
-                for _last2 in last2:
-                    for _last in last:
-                        key = (_last2, _last, wtype)
-                        params.append(key)
-            elif not last2 and last:
+        """
+        if last2 and last:
+            for _last2 in last2:
                 for _last in last:
-                    key = (_last, wtype)
+                    key = (_last2, _last, wtype)
                     params.append(key)
-            else:
-                key = (wtype,)
+        elif not last2 and last:
+            for _last in last:
+                key = (_last, wtype)
                 params.append(key)
+        else:
+            key = (wtype,)
+            params.append(key)
         for key in params:
             if index < 3:
                 root[HEAD][key] = root[HEAD].get(key, 0) + 1
@@ -266,7 +263,10 @@ def _bases2nodes(bases, root, index=0, last=None, last2=None):
                 root[TAIL][key] = root[TAIL].get(key, 0) + 1
         last2 = last
         last = base
+        lasts.insert(0, base)
+        lasts.pop()
         index += 1
+        """
 
 
 def _bases2tree(bases_groups, root):
@@ -276,7 +276,7 @@ def _bases2tree(bases_groups, root):
 
 def _sentences2tree(sentences):
     """Build a knowledge <PNode> tree from the list<str> of sentences."""
-    root = model.PNode()
+    root = dict(head=dict(), body=dict(), tail=dict())
     for sentence in sentences:
         bases = _sentence2bases(sentence)
         _bases2tree(bases, root)
@@ -284,7 +284,7 @@ def _sentences2tree(sentences):
 
 def _words2tree(words_lists):
     """Build a knowledge <PNode> tree from the list of word's lists: list<str>"""
-    root = model.PNode()
+    root = dict(head=dict(), body=dict(), tail=dict())
     for words in words_lists:
         bases = tuple(word.get_types() for word in words)
         _bases2tree(bases, root)
@@ -323,6 +323,9 @@ def _normalize_node_scores(tree):
     """
 
 def build_tree():
+    #root = dict(head=dict(), body=dict(), tail=dict(), config=)
+    root = {TREE_HEAD: dict(), TREE_BODY: dict(), TREE_TAIL: dict(), TREE_CONFIG: dict()}
+    root[TREE_CONFIG]["memory_size"] = MARKOV_MEMORY_SIZE
     _bases2tree(_get_bases_groups(), root)
     #_normalize_node_scores(root)
     return root
@@ -336,6 +339,8 @@ def get_tree():
         else:
             with open(TREE_DUMP_FILE_PICKLE, "rb") as open_f:
                 tree = pickle.load(open_f)
+        if tree[TREE_CONFIG]["memory_size"] != MARKOV_MEMORY_SIZE:
+            raise ValueError("Different tree memory and config memory.")
 
     except Exception as err:
         #print err.message
@@ -360,41 +365,57 @@ def match_sentence(sentence):
     last2 = []
     last = []
     path = []
-    print bases
-    while index < len(bases):
-        base = bases[index]
-        real_base = base
-        if base == (0,):
-            base = range(1, model.NB_WTYPES)
-        params = []
-        for wtype in base:
-            if last2 and last:
-                for _last2 in last2:
-                    for _last in last:
-                        key = (_last2, _last, wtype)
-                        params.append(key)
-            elif not last2 and last:
-                for _last in last:
-                    key = (_last, wtype)
-                    params.append(key)
-            else:
-                key = (wtype,)
-                params.append(key)
+    #print bases
+    best_matches = []
+    CORRECT_DEPTH = 2
+
+    for index in xrange(len(bases)):
+        if bases[index] == (0,):
+            bases[index] = range(1, model.NB_WTYPES)
+        if index > MARKOV_MEMORY_SIZE - CORRECT_DEPTH:
+            for _id in xrange(1, CORRECT_DEPTH):
+                bases[index - MARKOV_MEMORY_SIZE + _id] = [path[index - MARKOV_MEMORY_SIZE + _id]]
+        params = ()
+        id_min = max(index-MARKOV_MEMORY_SIZE, 0)
+        id_max = min(index+1, len(bases))
+        params = tuple(itertools.product(*bases[id_min:id_max]))
+
         tmp = []
         for key in params:
-            if index < 3:
-                score = root[HEAD].get(key, 0)
-            elif index < len(bases)-3:
-                score = root[BODY].get(key, 0)
-            else:
-                score = root[TAIL].get(key, 0)
-            tmp.append((score, key))
+            if key:
+                if index < MARKOV_MEMORY_SIZE:
+                    score = root[TREE_HEAD].get(key, 0)
+                elif index < len(bases)-MARKOV_MEMORY_SIZE:
+                    score = root[TREE_BODY].get(key, 0)
+                else:
+                    score = root[TREE_TAIL].get(key, 0)
+                tmp.append((score, key))
         tmp.sort()
-        #print tmp
+        best = tmp[-1][-1]
+        best_matches.append(tmp[-1])
+        score = tmp[-1][0]
+
+        for id_path in xrange(1, CORRECT_DEPTH):
+            if len(best) > id_path:
+                id_2 = len(best) - id_path - 1
+                if path[-id_path] != best[id_2] and best[id_2] != WType.UNKNOWN and score > best_matches[-id_path][0]:
+                    path[-id_path] = best[id_2]
+
+        """
+        if len(path) > 0:
+            if len(best) == 3:
+                if path[-1] != best[1] and best[1] != WType.UNKNOWN:
+                    path[-1] = best[1]
+                if path[-2] != best[0] and best[0] != WType.UNKNOWN:
+                    path[-2] = best[0]
+            elif len(best) == 2 and best[0] != WType.UNKNOWN:
+                if path[-1] != best[0]:
+                    path[-1] = best[0]
+        """
+        #print path, tmp[-1]
         path.append(tmp[-1][-1][-1])
-        last2 = last
-        last = real_base #[path[-1]]
-        index += 1
+        #print best
+    #print best_matches
     return path
 
 def learn():
@@ -407,35 +428,23 @@ def learn():
     clone_attributes()
 
 
+def test():
+    filenames = glob.glob(os.path.join(SENTENCES_DIR, "*.txt"))
+    cpt = 0
+    for filename in filenames:
+        for sentence in utils.get_sentences(filename):
+            seq = match_sentence(sentence)
+            print seq, repr(sentence.strip())
+            cpt += 1
+            if cpt >= 10:
+                break
+
+    #return
 
 if __name__ == "__main__":
     #learn()
-    """
-    tree = get_tree()
-    #for k, v in tree.items():
-    #    print k, v.nodes.keys(), v.score
-    for v in tree.get_nodes():
-        #print len(v.nodes.values())
-        #print v.type, v.score, len(v.nodes)
-        for _v in v.get_nodes():
-            print v.type, _v.type, _v.score, len(_v.get_nodes())
-        print "\n\n"
-    #print tree.nodes.keys()
-    for v in tree.get_nodes():
-        print v.type, v.score
-    #print tree
-    #print res
-    #myword = model.WordDAO.get("porn")
-    #print word
-    #print model.WordDAO.get("the").get_types()
-    #print model.WordDAO.get("this").get_types()
-    
-
-    tree = get_tree()
-    for k in sorted(tree):
-        print k, tree[k]
-    """
-    txt = "Do not love another until you have walked for two moons in his moccasins"
-    res = match_sentence(txt)
-    print "\n", res
-    print dir(get_tree())
+    #txt = "Do not love another until you have walked for two moons in his moccasins"
+    #txt = "xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx"
+    #txt = "what the hell is this fucking and shat shdhdd!!?"
+    #txt = "Iteratively returns the first n Fibonacci numbers, starting from 0 "
+    test()

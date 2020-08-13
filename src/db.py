@@ -137,6 +137,7 @@ class DBManager(object):
         #print list(data)s
         cls.executemany(query, data)
 
+
     @classmethod
     def set_auto_commit(cls, value=True):
         cls._auto_commit = value

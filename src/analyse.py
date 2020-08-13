@@ -282,7 +282,19 @@ def get_infos(sentence):
 
     fields = [is_assert, is_negative, is_neutral, is_positive, is_question, is_request,\
               _object, object_is_human, subject, subject_is_human, verb]
-    return ",".join([str(field) for field in fields])
+    return {
+        'is_assert': is_assert,
+        'is_negative': is_negative,
+        'is_neutral': is_neutral,
+        'is_positive': is_positive,
+        'is_question': is_question,
+        'is_request': is_request,
+        'object': _object,
+        'object_is_human': object_is_human,
+        'subject': subject,
+        'subject_is_human': subject_is_human,
+        'verb': verb
+    }
 
 
 if __name__ == "__main__":

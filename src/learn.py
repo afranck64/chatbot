@@ -58,7 +58,10 @@ TREE_BODY = "body"
 TREE_TAIL = "tail"
 TREE_CONFIG = "_config"
 
-MARKOV_MEMORY_SIZE = 4
+MARKOV_MEMORY_SIZE = 6
+
+def is_trained():
+    return model.WordDAO.is_populated()
 
 def _process_multi_types():
     """Assign to each word a part of speach based on the multi db."""
@@ -426,6 +429,8 @@ def learn():
     process_sentiments()
 
     clone_attributes()
+
+    get_tree()
 
 
 def test():

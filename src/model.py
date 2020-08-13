@@ -179,6 +179,11 @@ class WordDAO(object):
     def set_auto_commit(cls, value=True):
         """Enable or disable auto commit after each query to speed up batch queries."""
         db.DBManager.set_auto_commit(value)
+    
+    @classmethod
+    def is_populated(cls):
+        sql = f"select count(*) from {db.DBManager.table}"
+        return db.DBManager.execute(sql)[0][0] > 0
 
 
 def bench():

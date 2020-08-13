@@ -22,4 +22,4 @@ Start the program:
 python main.py "this is the sentence."
 
 ## Author(s)
-- [@afranck64](https://github.com/afranck)
+- [@afranck64](https://github.com/afranck64)

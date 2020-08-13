@@ -1,17 +1,21 @@
 # -- coding: utf-8 --
 import sqlite3
 import os
+import sys
+import pathlib
 
-import utils
+from . import utils
 
-DB_PATH = "resources/db/db.sqlite3"
+DB_PATH = pathlib.Path(__file__).parent.parent.joinpath("resources/db/db.sqlite3")
+os.makedirs(DB_PATH.parent, exist_ok=True)
+print(DB_PATH)
 
 DB_SQL_SCHEMA = """
-CREATE TABLE words
+CREATE TABLE IF NOT EXISTS words
 (id INTEGER PRIMARY KEY, word TEXT COLLATE NOCASE, pscore REAL, nscore REAL, type INT);"""
 
 DB_SQL_SCHEMA = """
-CREATE TABLE words
+CREATE TABLE IF NOT EXISTS words
 (id INTEGER PRIMARY KEY, word TEXT not null unique, pscore REAL not null, nscore REAL not null,
 type INT not null, apscore REAL not null, anscore REAL not null, nb_pos INT not null,
 nb_neg INT not null)"""
@@ -23,7 +27,7 @@ nb_neg INT not null)"""
 # anscore: the absolute negative score of the word
 # nb_pos: the number of positive matches during training
 # nb_neg: the number of negative matches during training
-DB_SQL_INDEX_WORD = "CREATE INDEX word_index on words(word COLLATE NOCASE);"
+DB_SQL_INDEX_WORD = "CREATE INDEX IF NOT EXISTS word_index on words(word COLLATE NOCASE);"
 
 def icompare(text1, text2):
     return (u"%s" % text1).lower() == (u"%s" % text2).lower()
@@ -96,7 +100,7 @@ class DBManager(object):
             if cls._auto_commit:
                 conn.commit()
         except (sqlite3.IntegrityError, sqlite3.InternalError):
-            print "Error on: ", sql, data
+            print("Error on: ", sql, data)
             pass
         return res
 
@@ -110,13 +114,13 @@ class DBManager(object):
                 try:
                     res.append(cursor.execute(sql, data_row))
                 except (sqlite3.IntegrityError, sqlite3.InternalError):
-                    print "Error on: ", sql, data
+                    print("Error on: ", sql, data)
                     pass
         else:
             try:
                 res.append(cursor.execute(sql))
             except (sqlite3.IntegrityError, sqlite3.InternalError):
-                print "Error on: ", sql, data
+                print("Error on: ", sql, data)
                 pass
         cursor.close()
         if cls._auto_commit:
@@ -140,10 +144,10 @@ class DBManager(object):
             cls.getConn().commit()
 
 
+DBManager.init_db()
 if __name__ == "__main__":
-    #DBManager.init_db()
     #DBManager.populate_db(utils.get_base_words())
-    print list(utils.get_base_words())
+    print(list(utils.get_base_words()))
     #result = DBManager.execute("select * from words")
     #print len(result)
-    print "END!"
+    print("END!")

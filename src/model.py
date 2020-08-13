@@ -2,8 +2,8 @@
 """
 
 import json
-import utils
-import db
+from . import utils
+from . import db
 
 WType = utils.enum(UNKNOWN=0, NOUN=1, VERB=2, ADJECTIVE=3, ADVERB=4, PRONOUN=5,
                    PREPOSITION=6, CONJUNCTION=7, DETERMINER=8, EXCLAMATION=9,
@@ -81,7 +81,7 @@ class Word(object):
 
     def get_types(self):
         """Return all types of this word."""
-        res = tuple(_id for _id in xrange(NB_WTYPES) if self.is_type(_id))
+        res = tuple(_id for _id in range(NB_WTYPES) if self.is_type(_id))
         return res or (0,)
 
     def save(self):
@@ -196,5 +196,5 @@ if __name__ == "__main__":
     """
     p = PNode(0, 2)
     q = PNode(0, 6)
-    print p[0], q[0], q[2]
+    print(p[0], q[0], q[2])
     p[0] = 2

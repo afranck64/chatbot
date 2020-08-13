@@ -5,12 +5,12 @@ import os
 import glob
 import string
 import json
-import cPickle as pickle
+import pickle
 import itertools
 
-from model import WType
-import model
-import utils
+from .model import WType
+from . import model
+from . import utils
 
 #sys.setrecursionlimit(10000000)
 
@@ -227,7 +227,7 @@ def _sentence2bases(sentence):
     return tuple(word.get_types() for word in sentence2words(sentence))
 
 def _bases2nodes(bases, root):
-    for index in xrange(len(bases)):
+    for index in range(len(bases)):
         params = ()
         id_min = max(index-MARKOV_MEMORY_SIZE, 0)
         id_max = min(index+1, len(bases))
@@ -369,11 +369,11 @@ def match_sentence(sentence):
     best_matches = []
     CORRECT_DEPTH = 2
 
-    for index in xrange(len(bases)):
+    for index in range(len(bases)):
         if bases[index] == (0,):
             bases[index] = range(1, model.NB_WTYPES)
         if index > MARKOV_MEMORY_SIZE - CORRECT_DEPTH:
-            for _id in xrange(1, CORRECT_DEPTH):
+            for _id in range(1, CORRECT_DEPTH):
                 bases[index - MARKOV_MEMORY_SIZE + _id] = [path[index - MARKOV_MEMORY_SIZE + _id]]
         params = ()
         id_min = max(index-MARKOV_MEMORY_SIZE, 0)
@@ -395,7 +395,7 @@ def match_sentence(sentence):
         best_matches.append(tmp[-1])
         score = tmp[-1][0]
 
-        for id_path in xrange(1, CORRECT_DEPTH):
+        for id_path in range(1, CORRECT_DEPTH):
             if len(best) > id_path:
                 id_2 = len(best) - id_path - 1
                 if path[-id_path] != best[id_2] and best[id_2] != WType.UNKNOWN and score > best_matches[-id_path][0]:
@@ -434,7 +434,7 @@ def test():
     for filename in filenames:
         for sentence in utils.get_sentences(filename):
             seq = match_sentence(sentence)
-            print seq, repr(sentence.strip())
+            print(seq, repr(sentence.strip()))
             cpt += 1
             if cpt >= 10:
                 break

@@ -2,9 +2,9 @@
 """
 
 import string
-import model
-import learn
-from model import Word, WordDAO, WType
+from .import model
+from .import learn
+from .model import Word, WordDAO, WType
 
 def process(txt):
     sentence = txt.lower()
@@ -288,5 +288,5 @@ def get_infos(sentence):
 if __name__ == "__main__":
     txt = "the man wrote a letter."
     words = tuple(learn.sentence2words(txt))
-    print get_sentence_type(txt, words)
-    print get_subject_verb_object(txt, words)
+    print(get_sentence_type(txt, words))
+    print(get_subject_verb_object(txt, words))

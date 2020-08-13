@@ -10,9 +10,10 @@ import src.analyse as analyse
 import src.learn as learn
 
 if __name__ == "__main__":
+    learn.learn()
     if len(sys.argv) == 2:
         sentence = sys.argv[1]
-        print analyse.get_infos(sentence)
+        print(analyse.get_infos(sentence))
     else:
         msg = "No parameter given!"
         sys.exit(msg)

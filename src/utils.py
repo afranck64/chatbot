@@ -110,5 +110,5 @@ if __name__ == "__main__":
     #print list(get_base_words())
     import learn
     res = get_e_lemma_groups(learn.E_LEMMA_FILE)
-    print res
-    print list(res)
+    print (res)
+    print (list(res))
